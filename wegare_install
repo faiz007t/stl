@@ -44,18 +44,25 @@ else
   rm /www/testfile
 fi
 
-# Step 4: Copy wegare folder contents to /www
-echo -e "${Y}Copying wegare folder contents to /www...${N}"
-cp -r /tmp/stl/wegare/* /www/
-if [ $? -ne 0 ]; then
+# Step 4: Copy wegare folder to /www using tar method to ensure copy and permissions
+echo -e "${Y}Copying wegare folder to /www using tar method...${N}"
+cd /tmp/stl || exit 1
+tar czf wegare.tar.gz wegare
+mv wegare.tar.gz /www/
+cd /www || exit 1
+tar xzf wegare.tar.gz
+rm wegare.tar.gz
+
+# Verify copy succeeded
+if [ ! -d /www/wegare ]; then
   echo -e "${R}Failed to copy wegare folder to /www.${N}"
   exit 1
 fi
 
-# Step 5: Set permissions
+# Step 5: Set permissions on /root and /www/wegare
 echo -e "${Y}Setting permissions...${N}"
 chmod -R 755 /root
-chmod -R 755 /www
+chmod -R 755 /www/wegare
 
 # Step 6: Clean up the repo clone in /tmp
 echo -e "${Y}Cleaning up temporary files...${N}"
@@ -76,7 +83,6 @@ wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/inject.py" -O /roo
 echo -e "${Y}Updating package list...${N}"
 opkg update
 
-# Install packages without -y and omit problematic packages like python, ip-full
 echo -e "${Y}Installing required packages...${N}"
 opkg install openvpn-openssl openssh-client stunnel lsof httping fping screen python3 coreutils-nohup libevent2 redsocks || echo -e "${Y}One or more packages may not have installed cleanly, please check.${N}"
 
