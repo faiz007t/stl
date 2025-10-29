@@ -35,9 +35,11 @@ function start() {
 
     exec("cat /root/akun/stl.txt | awk 'NR==2'", $cek);
     if (empty(implode($cek))) {
-        saveLog("You have not created a profile");
+        // No profile set
+        echo json_encode(["status" => "error", "message" => "No profile created or active"]);
+        return;
     } else {
-        stop();  // stop existing connections before starting new
+        stop();  // stop any existing connections to avoid conflicts
         exec("cat /root/akun/pillstl.txt", $pillstl);
         if (implode($pillstl) == "1") {
             exec("route -n | grep -i 0.0.0.0 | head -n1 | awk '{print $2}'", $ipmodem);
@@ -58,11 +60,13 @@ function start() {
         file_put_contents("/usr/bin/ping-stl", "#!/bin/bash\n#stl (Wegare)\nhttping m.google.com\n");
         exec("chmod +x /usr/bin/ping-stl");
         exec("/usr/bin/ping-stl > /dev/null 2>&1 &");
+
+        echo json_encode(["status" => "success", "message" => "STL started"]);
     }
 }
 
 function stop() {
-    // Kill all background processes immediately to prevent further logging
+    // Stop running processes immediately
     exec("screen -S GProxy -X quit");
     exec("killall -q badvpn-tun2socks ssh ping-stl sshpass httping python3 redsocks fping screen");
 
@@ -130,8 +134,54 @@ function saveConfig() {
     ];
 
     file_put_contents($filename, json_encode($configData, JSON_PRETTY_PRINT));
-
     echo "Profile saved successfully as " . basename($filename);
+}
+
+function listConfigs() {
+    $dir = "/root/akun/configs/";
+    $files = [];
+    if (is_dir($dir)) {
+        $scanned = scandir($dir);
+        foreach ($scanned as $file) {
+            if (pathinfo($file, PATHINFO_EXTENSION) === "json") {
+                $content = file_get_contents($dir . $file);
+                $json = json_decode($content, true);
+                if ($json && isset($json["title"])) {
+                    $files[] = ["filename" => $file, "title" => $json["title"]];
+                } else {
+                    $files[] = ["filename" => $file, "title" => pathinfo($file, PATHINFO_FILENAME)];
+                }
+            }
+        }
+    }
+    header('Content-Type: application/json');
+    echo json_encode($files);
+}
+
+function setActiveConfig() {
+    $title = $_POST["title"] ?? '';
+    $safeTitle = preg_replace('/[^a-zA-Z0-9_-]/', '', $title);
+    $file = "/root/akun/configs/" . $safeTitle . ".json";
+
+    if (!file_exists($file)) {
+        echo json_encode(["error" => "Config not found"]);
+        return;
+    }
+
+    $content = file_get_contents($file);
+    $config = json_decode($content, true);
+    if (!$config || !isset($config["host"])) {
+        echo json_encode(["error" => "Invalid config format: missing host"]);
+        return;
+    }
+
+    // Write active profile host on line 2 of stl.txt, preserve or blank line 1
+    $line1 = ""; 
+    $line2 = $config["host"];
+
+    file_put_contents("/root/akun/stl.txt", $line1 . "\n" . $line2);
+
+    echo json_encode(["success" => "Active config set", "host" => $line2]);
 }
 
 $action = $_POST["action"] ?? '';
@@ -141,10 +191,9 @@ switch ($action) {
         start();
         break;
     case "stop":
-        // Clear log file before stopping to avoid unwanted log entries
         if (file_exists("logs-2.txt")) unlink("logs-2.txt");
         stop();
-        saveLog("SUCCESSFULLY STOPPED"); // Only show this one final log on stop
+        saveLog("SUCCESSFULLY STOPPED");
         break;
     case "saveConfig":
         saveConfig();
@@ -171,6 +220,12 @@ switch ($action) {
         } else {
             echo "Log file not found";
         }
+        break;
+    case "listConfigs":
+        listConfigs();
+        break;
+    case "setActiveConfig":
+        setActiveConfig();
         break;
     default:
         header('Content-Type: application/json');
