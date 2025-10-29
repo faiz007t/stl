@@ -73,7 +73,12 @@ wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/tunnel.py" -O /roo
 wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/ssh.py" -O /root/akun/ssh.py
 wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/inject.py" -O /root/akun/inject.py
 
-opkg install openvpn-openssl ip-full openssh-client stunnel lsof httping fping screen python python3 coreutils-nohup libevent2 redsocks
+echo -e "${Y}Updating package list...${N}"
+opkg update
+
+# Install packages without -y and omit problematic packages like python, ip-full
+echo -e "${Y}Installing required packages...${N}"
+opkg install openvpn-openssl openssh-client stunnel lsof httping fping screen python3 coreutils-nohup libevent2 redsocks || echo -e "${Y}One or more packages may not have installed cleanly, please check.${N}"
 
 chmod +x /usr/bin/gproxy
 chmod +x /usr/bin/stl
