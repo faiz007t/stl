@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Color codes
+R='\033[1;31m' # Red
+G='\033[1;32m' # Green
+Y='\033[1;33m' # Yellow
+N='\033[1;37m' # White
+
+rawgit="https://raw.githubusercontent.com"
+usergit="faiz007t"
+
+echo -e "${Y}Starting full Wegare STL setup...${N}"
+
+# Step 1: Clone the full repo into /tmp
+echo -e "${Y}Cloning repository into /tmp...${N}"
+cd /tmp || exit
+rm -rf stl
+git clone "https://github.com/$usergit/stl.git"
+if [ $? -ne 0 ]; then
+  echo -e "${R}Git clone failed! Check your internet connection or repo URL.${N}"
+  exit 1
+fi
+
+# Step 2: Copy akun folder contents to /root
+echo -e "${Y}Copying akun folder contents to /root...${N}"
+cp -r stl/akun/* /root/
+if [ $? -ne 0 ]; then
+  echo -e "${R}Failed to copy akun folder to /root.${N}"
+  exit 1
+fi
+
+# Step 3: Copy wegare folder contents to /www
+echo -e "${Y}Copying wegare folder contents to /www...${N}"
+cp -r stl/wegare/* /www/
+if [ $? -ne 0 ]; then
+  echo -e "${R}Failed to copy wegare folder to /www.${N}"
+  exit 1
+fi
+
+# Step 4: Set permissions
+echo -e "${Y}Setting permissions...${N}"
+chmod -R 755 /root
+chmod -R 755 /www
+
+# Step 5: Clean up the repo clone in /tmp
+echo -e "${Y}Cleaning up temporary files...${N}"
+rm -rf /tmp/stl
+
+# Step 6: Install Wegare STL scripts and dependencies
+echo -e "${Y}Installing Wegare STL scripts and dependencies...${N}"
+mkdir -p ~/akun/
+
+wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/stl.sh" -O /usr/bin/stl
+wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/gproxy.sh" -O /usr/bin/gproxy
+wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/autorekonek-stl.sh" -O /usr/bin/autorekonek-stl
+
+wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/tunnel.py" -O /root/akun/tunnel.py
+wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/ssh.py" -O /root/akun/ssh.py
+wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/inject.py" -O /root/akun/inject.py
+
+opkg install -y openvpn-openssl ip-full openssh-client stunnel lsof httping fping screen python python3 coreutils-nohup libevent2 redsocks
+
+chmod +x /usr/bin/gproxy
+chmod +x /usr/bin/stl
+chmod +x /root/akun/tunnel.py
+chmod +x /root/akun/ssh.py
+chmod +x /root/akun/inject.py
+chmod +x /usr/bin/autorekonek-stl
+
+rm -f ~/*.ipk
+rm -f ~/install.sh
+
+mkdir -p ~/.ssh/
+touch ~/akun/ssl.conf
+touch ~/.ssh/config
+touch ~/akun/stl.txt
+touch ~/akun/ipmodem.txt 
+
+sleep 2
+
+echo -e "${G}================================"
+echo -e "Wegare STL installation complete!"
+echo -e "================================${N}"
