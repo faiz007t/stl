@@ -23,30 +23,45 @@ fi
 
 # Step 2: Copy akun folder contents to /root
 echo -e "${Y}Copying akun folder contents to /root...${N}"
-cp -r stl/akun/* /root/
+cp -r /tmp/stl/akun/* /root/
 if [ $? -ne 0 ]; then
   echo -e "${R}Failed to copy akun folder to /root.${N}"
   exit 1
 fi
 
-# Step 3: Copy wegare folder contents to /www
+# Step 3: Ensure /www exists and is writable
+if [ ! -d /www ]; then
+  echo -e "${Y}/www directory does not exist. Creating it...${N}"
+  mkdir -p /www
+fi
+
+echo -e "${Y}Checking write permission for /www...${N}"
+touch /www/testfile 2>/dev/null
+if [ $? -ne 0 ]; then
+  echo -e "${R}Cannot write to /www directory. Please check permissions.${N}"
+  exit 1
+else
+  rm /www/testfile
+fi
+
+# Step 4: Copy wegare folder contents to /www
 echo -e "${Y}Copying wegare folder contents to /www...${N}"
-cp -r stl/wegare/* /www/
+cp -r /tmp/stl/wegare/* /www/
 if [ $? -ne 0 ]; then
   echo -e "${R}Failed to copy wegare folder to /www.${N}"
   exit 1
 fi
 
-# Step 4: Set permissions
+# Step 5: Set permissions
 echo -e "${Y}Setting permissions...${N}"
 chmod -R 755 /root
 chmod -R 755 /www
 
-# Step 5: Clean up the repo clone in /tmp
+# Step 6: Clean up the repo clone in /tmp
 echo -e "${Y}Cleaning up temporary files...${N}"
 rm -rf /tmp/stl
 
-# Step 6: Install Wegare STL scripts and dependencies
+# Step 7: Install Wegare STL scripts and dependencies
 echo -e "${Y}Installing Wegare STL scripts and dependencies...${N}"
 mkdir -p ~/akun/
 
@@ -58,7 +73,7 @@ wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/tunnel.py" -O /roo
 wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/ssh.py" -O /root/akun/ssh.py
 wget -q --no-check-certificate "$rawgit/$usergit/stl/main/stl/inject.py" -O /root/akun/inject.py
 
-opkg install -y openvpn-openssl ip-full openssh-client stunnel lsof httping fping screen python python3 coreutils-nohup libevent2 redsocks
+opkg install openvpn-openssl ip-full openssh-client stunnel lsof httping fping screen python python3 coreutils-nohup libevent2 redsocks
 
 chmod +x /usr/bin/gproxy
 chmod +x /usr/bin/stl
